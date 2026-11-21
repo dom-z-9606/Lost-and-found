@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home - Campus Lost &amp; Found</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="site-nav"></header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-img" role="img" aria-label="Campus at dusk"></div>
+      <div class="container hero-inner">
+        <h1>Campus Lost &amp; Found</h1>
+        <p class="tagline">Find it. Report it. Return it.</p>
+        <div class="hero-actions">
+          <form class="search-bar" action="search.html" method="get" role="search">
+            <span class="search-icon" id="heroSearchIcon"></span>
+            <input type="search" name="q" placeholder="Search lost or found items..." aria-label="Search lost or found items">
+            <button class="btn btn-primary" type="submit">Search</button>
+          </form>
+          <a class="btn btn-primary btn-lg" href="report.html" id="reportBtn">Report an Item</a>
+        </div>
+      </div>
+    </section>
+
+    <div class="container">
+      <section class="stats" aria-label="Item totals">
+        <a class="stat-card stat-lost" href="search.html?status=lost">
+          <span class="stat-icon" data-icon="alert"></span>
+          <span><span class="stat-label">Lost Items</span><br><span class="stat-value" id="statLost">0</span></span>
+        </a>
+        <a class="stat-card stat-found" href="search.html?status=found">
+          <span class="stat-icon" data-icon="search"></span>
+          <span><span class="stat-label">Found Items</span><br><span class="stat-value" id="statFound">0</span></span>
+        </a>
+        <a class="stat-card stat-returned" href="search.html?status=returned">
+          <span class="stat-icon" data-icon="check"></span>
+          <span><span class="stat-label">Returned</span><br><span class="stat-value" id="statReturned">0</span></span>
+        </a>
+      </section>
+
+      <div class="home-grid">
+        <section class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Recent Items</h2>
+            <a class="link-arrow" href="search.html" id="viewAll">View All</a>
+          </div>
+          <div class="items-grid" id="recentGrid"></div>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">Common Locations</h2>
+          <p class="panel-sub">Where items are most often lost on campus.</p>
+          <ul class="loc-list" id="locList"></ul>
+        </section>
+      </div>
+    </div>
+  </main>
+
+
+  <script src="items-backend.js"></script>
+  <script src="ui.js"></script>
+  <script>
+    const user = initPage('home');
+    if (user) {
+      document.getElementById('heroSearchIcon').innerHTML = icon('search');
+      document.getElementById('reportBtn').insertAdjacentHTML('afterbegin', icon('plus'));
+      document.getElementById('viewAll').insertAdjacentHTML('beforeend', icon('arrowRight'));
+      document.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); });
+
+      // Totals
+      const stats = Items.getStats();
+      document.getElementById('statLost').textContent = stats.lost;
+      document.getElementById('statFound').textContent = stats.found;
+      document.getElementById('statReturned').textContent = stats.returned;
+
+      // Recent items
+      const recent = Items.getRecent(6);
+      document.getElementById('recentGrid').innerHTML = recent.length
+        ? recent.map(itemCard).join('')
+        : emptyState('No items yet', 'Reported items will show up here.', '<a class="btn btn-primary" href="report.html">Report an Item</a>');
+
+      // Common locations
+      const locs = Items.getCommonLocations(5);
+      const max = locs.length ? locs[0].count : 1;
+      document.getElementById('locList').innerHTML = locs.length
+        ? locs.map(l =>
+            '<li><div class="loc-name">' + esc(l.location) + '</div>' +
+            '<div class="loc-row"><div class="loc-track"><div class="loc-fill" style="width:' + (l.count / max * 95).toFixed(1) + '%"></div></div>' +
+            '<span class="loc-count">' + l.count + '</span></div></li>'
+          ).join('')
+        : '<li class="muted">No lost items have been reported yet.</li>';
+    }
+  </script>
+</body>
+</html>

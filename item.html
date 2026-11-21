@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Item Details - Campus Lost &amp; Found</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="site-nav"></header>
+
+  <main>
+    <div class="container page-body">
+      <a class="back-link" href="search.html" id="backLink">Back to search</a>
+      <div class="alert alert-success" id="notice" role="status" hidden></div>
+      <div id="detail"></div>
+    </div>
+  </main>
+
+
+  <script src="items-backend.js"></script>
+  <script src="ui.js"></script>
+  <script>
+    const user = initPage('');
+    if (user) {
+      document.getElementById('backLink').insertAdjacentHTML('afterbegin', icon('arrowLeft'));
+
+      const params = new URLSearchParams(location.search);
+      const id = params.get('id');
+      const notice = document.getElementById('notice');
+      const container = document.getElementById('detail');
+
+      if (params.get('new')) {
+        notice.textContent = 'Your report has been posted.';
+        notice.hidden = false;
+      }
+
+      function render() {
+        const item = Items.getById(id);
+        if (!item) {
+          container.innerHTML = emptyState('Item not found', 'This item may have been removed.', '<a class="btn btn-primary" href="search.html">Search Items</a>');
+          return;
+        }
+        document.title = item.name + ' - Campus Lost & Found';
+
+        const verb = item.type === 'found' ? 'found' : 'lost';
+        const isMine = item.reportedBy.toLowerCase() === user.email.toLowerCase();
+        const reportedOn = new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+        let actions = '';
+        if (item.status === 'returned') {
+          const returnedOn = item.returnedAt ? new Date(item.returnedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          actions += '<div class="returned-note">' + icon('check') + '<span>This item was returned to its owner' + (returnedOn ? ' on ' + esc(returnedOn) : '') + '.</span></div>';
+        }
+        actions += '<div class="detail-actions" id="actions">';
+        if (item.status !== 'returned') {
+          actions += '<button class="btn btn-success" type="button" id="returnBtn">' + icon('check') + ' Mark as Returned</button>';
+        }
+        if (isMine) {
+          actions += '<button class="btn btn-danger" type="button" id="deleteBtn">' + icon('trash') + ' Delete Report</button>';
+        }
+        actions += '</div><div id="confirmArea"></div>';
+
+        container.innerHTML =
+          '<article class="detail">' +
+            '<div class="detail-media">' + itemMedia(item) + '</div>' +
+            '<div>' +
+              statusBadge(item.status) +
+              '<h1>' + esc(item.name) + '</h1>' +
+              '<dl class="detail-meta">' +
+                '<div><dt>Category</dt><dd>' + esc(item.category) + '</dd></div>' +
+                '<div><dt>Location ' + verb + '</dt><dd>' + esc(item.location) + '</dd></div>' +
+                '<div><dt>Date ' + verb + '</dt><dd>' + esc(formatDate(item.date)) + '</dd></div>' +
+                '<div><dt>Originally reported</dt><dd>' + (verb === 'lost' ? 'Lost' : 'Found') + '</dd></div>' +
+                '<div><dt>Reported by</dt><dd>' + esc(item.reporterName) + (isMine ? ' (you)' : '') + '</dd></div>' +
+                '<div><dt>Contact</dt><dd>' + esc(item.reportedBy) + '</dd></div>' +
+                '<div><dt>Reported on</dt><dd>' + esc(reportedOn) + '</dd></div>' +
+              '</dl>' +
+              '<div class="detail-desc"><h2>Description</h2><p>' + (item.description ? esc(item.description) : '<span class="muted">No description provided.</span>') + '</p></div>' +
+              actions +
+            '</div>' +
+          '</article>';
+
+        const returnBtn = document.getElementById('returnBtn');
+        if (returnBtn) returnBtn.addEventListener('click', () => askConfirm(
+          'Confirm this item has been returned to its owner?', 'Yes, mark returned', 'btn-success',
+          () => {
+            const r = Items.markReturned(item.id);
+            notice.textContent = r.success ? 'Marked as returned. Thanks for helping!' : r.message;
+            notice.hidden = false;
+            render();
+          }
+        ));
+
+        const deleteBtn = document.getElementById('deleteBtn');
+        if (deleteBtn) deleteBtn.addEventListener('click', () => askConfirm(
+          'Delete this report? This cannot be undone.', 'Yes, delete', 'btn-danger',
+          () => {
+            const r = Items.deleteItem(item.id, user);
+            if (r.success) location.href = 'my-reports.html';
+          }
+        ));
+      }
+
+      // Inline confirmation instead of a browser pop-up
+      function askConfirm(message, yesLabel, yesClass, onYes) {
+        document.getElementById('actions').hidden = true;
+        const area = document.getElementById('confirmArea');
+        area.innerHTML =
+          '<div class="confirm-box"><p>' + esc(message) + '</p>' +
+          '<button class="btn ' + yesClass + '" type="button" id="yesBtn">' + esc(yesLabel) + '</button>' +
+          '<button class="btn btn-outline" type="button" id="noBtn">Cancel</button></div>';
+        document.getElementById('yesBtn').addEventListener('click', onYes);
+        document.getElementById('noBtn').addEventListener('click', () => {
+          area.innerHTML = '';
+          document.getElementById('actions').hidden = false;
+        });
+        document.getElementById('yesBtn').focus();
+      }
+
+      render();
+    }
+  </script>
+</body>
+</html>

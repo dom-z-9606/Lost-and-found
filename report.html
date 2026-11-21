@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report an Item - Campus Lost &amp; Found</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="site-nav"></header>
+
+  <main>
+    <section class="page-head">
+      <div class="container">
+        <h1>Report an Item</h1>
+        <p>Lost something, or found something that isn't yours? Let the campus know.</p>
+      </div>
+    </section>
+
+    <div class="container page-body">
+      <form class="form-card" id="reportForm" novalidate>
+        <div class="alert alert-error" id="formError" role="alert" hidden></div>
+
+        <div class="form-grid">
+          <fieldset class="full" style="border:0;min-width:0">
+            <legend class="field-label">What happened? <span class="req">*</span></legend>
+            <div class="segmented">
+              <input type="radio" name="type" id="typeLost" value="lost" checked>
+              <label for="typeLost" class="seg-lost"><span class="seg-icon" data-icon="alert"></span><span>I lost something<small>Ask others to keep an eye out</small></span></label>
+              <input type="radio" name="type" id="typeFound" value="found">
+              <label for="typeFound" class="seg-found"><span class="seg-icon" data-icon="search"></span><span>I found something<small>Help it get back to its owner</small></span></label>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label for="name">Item name <span class="req">*</span></label>
+            <input class="input" id="name" name="name" type="text" maxlength="80" placeholder="e.g. Black Backpack" required>
+          </div>
+
+          <div class="field">
+            <label for="category">Category <span class="req">*</span></label>
+            <select class="input" id="category" name="category"></select>
+          </div>
+
+          <div class="field">
+            <label for="location" id="locationLabel">Where was it lost? <span class="req">*</span></label>
+            <input class="input" id="location" name="location" type="text" list="locationList" maxlength="80" placeholder="e.g. Student Union" required>
+            <datalist id="locationList"></datalist>
+          </div>
+
+          <div class="field">
+            <label for="date" id="dateLabel">Date lost <span class="req">*</span></label>
+            <input class="input" id="date" name="date" type="date" required>
+          </div>
+
+          <div class="field full">
+            <label for="description">Description</label>
+            <textarea class="input" id="description" name="description" maxlength="600" placeholder="Color, brand, distinguishing marks, what's inside..."></textarea>
+          </div>
+
+          <div class="field full">
+            <span class="field-label">Photo <span class="muted" style="font-weight:400">(optional)</span></span>
+            <div class="photo-field">
+              <div class="photo-preview" id="photoPreview"></div>
+              <div>
+                <div class="photo-buttons">
+                  <label class="btn btn-outline" for="photo" style="margin:0" id="photoBtn">Add photo</label>
+                  <button class="btn btn-danger" type="button" id="removePhoto" hidden>Remove</button>
+                </div>
+                <p class="hint">Without a photo, the category icon is shown.</p>
+              </div>
+              <input class="visually-hidden" type="file" id="photo" accept="image/*">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a class="btn btn-outline" href="index.html">Cancel</a>
+          <button class="btn btn-primary" type="submit" id="submitBtn">Submit Report</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+
+  <script src="items-backend.js"></script>
+  <script src="ui.js"></script>
+  <script>
+    const user = initPage('report');
+    if (user) {
+      const form = document.getElementById('reportForm');
+      const errorBox = document.getElementById('formError');
+      const preview = document.getElementById('photoPreview');
+      const photoInput = document.getElementById('photo');
+      const removeBtn = document.getElementById('removePhoto');
+      let photoData = '';
+
+      document.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); });
+      document.getElementById('photoBtn').insertAdjacentHTML('afterbegin', icon('image'));
+
+      CATEGORIES.forEach(c => form.category.add(new Option(c, c)));
+      form.category.value = 'Other';
+      document.getElementById('locationList').innerHTML = Items.getAllLocations().map(l => '<option value="' + esc(l) + '">').join('');
+
+      const today = toISODate(new Date());
+      form.date.value = today;
+      form.date.max = today;
+
+      // Labels follow the lost/found choice
+      function updateLabels() {
+        const verb = form.type.value === 'found' ? 'found' : 'lost';
+        document.getElementById('locationLabel').innerHTML = 'Where was it ' + verb + '? <span class="req">*</span>';
+        document.getElementById('dateLabel').innerHTML = 'Date ' + verb + ' <span class="req">*</span>';
+      }
+      form.querySelectorAll('input[name="type"]').forEach(r => r.addEventListener('change', updateLabels));
+
+      // Photo preview: uploaded photo, or the category icon as the default
+      function updatePreview() {
+        preview.innerHTML = itemMedia({ image: photoData, category: form.category.value, name: document.getElementById('name').value || 'item' });
+        removeBtn.hidden = !photoData;
+      }
+      form.category.addEventListener('change', updatePreview);
+
+      // Shrink photos before saving so they fit in localStorage
+      function resizeImage(file, maxSize) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = reject;
+          reader.onload = () => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+              const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.round(img.width * scale);
+              canvas.height = Math.round(img.height * scale);
+              const ctx = canvas.getContext('2d');
+              ctx.fillStyle = '#fff';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      photoInput.addEventListener('change', async () => {
+        const file = photoInput.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+          errorBox.textContent = 'Please choose an image file.';
+          errorBox.hidden = false;
+          return;
+        }
+        try {
+          photoData = await resizeImage(file, 640);
+          errorBox.hidden = true;
+        } catch (e) {
+          errorBox.textContent = 'That photo could not be read. Try a different one.';
+          errorBox.hidden = false;
+        }
+        photoInput.value = '';
+        updatePreview();
+      });
+
+      removeBtn.addEventListener('click', () => { photoData = ''; updatePreview(); });
+
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        const result = Items.addItem({
+          type: form.type.value,
+          name: document.getElementById('name').value,
+          category: form.category.value,
+          location: document.getElementById('location').value,
+          date: form.date.value,
+          description: form.description.value,
+          image: photoData
+        }, user);
+
+        if (!result.success) {
+          errorBox.textContent = result.message;
+          errorBox.hidden = false;
+          errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        location.href = 'item.html?id=' + encodeURIComponent(result.item.id) + '&new=1';
+      });
+
+      updateLabels();
+      updatePreview();
+    }
+  </script>
+</body>
+</html>

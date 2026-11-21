@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log In - Campus Lost &amp; Found</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="auth-page">
+    <div class="auth-card">
+      <div class="auth-brand" id="authBrand"><span>Campus Lost &amp; Found</span></div>
+      <h1>Welcome back</h1>
+      <p class="sub">Log in to search, report and return items.</p>
+
+      <div class="alert alert-error" id="loginError" role="alert" hidden></div>
+
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="email">Email</label>
+          <input class="input" type="email" id="email" name="email" placeholder="you@my.erau.edu" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input class="input" type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+        </div>
+        <button class="btn btn-primary btn-lg" type="submit">Log In</button>
+      </form>
+
+      <p class="auth-foot">Don't have an account? <a href="signup.html">Sign up</a></p>
+    </div>
+  </main>
+
+
+  <script src="items-backend.js"></script>
+  <script src="ui.js"></script>
+  <script src="Interaction-For-Website.js"></script>
+</body>
+</html>

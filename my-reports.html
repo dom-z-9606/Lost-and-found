@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Reports - Campus Lost &amp; Found</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="site-nav"></header>
+
+  <main>
+    <section class="page-head">
+      <div class="container">
+        <h1>My Reports</h1>
+        <p id="greeting">Items you have reported.</p>
+      </div>
+    </section>
+
+    <div class="container page-body">
+      <div class="tabs" id="tabs" role="tablist"></div>
+      <div class="items-grid" id="myItems"></div>
+    </div>
+  </main>
+
+
+  <script src="items-backend.js"></script>
+  <script src="ui.js"></script>
+  <script>
+    const user = initPage('mine');
+    if (user) {
+      document.getElementById('greeting').textContent = 'Hi ' + user.first + ', here are the items you have reported.';
+
+      const mine = Items.getByReporter(user.email);
+      const tabs = [['', 'All'], ['lost', 'Lost'], ['found', 'Found'], ['returned', 'Returned']];
+      let current = '';
+
+      function render() {
+        document.getElementById('tabs').innerHTML = tabs.map(([key, label]) => {
+          const count = key ? mine.filter(i => i.status === key).length : mine.length;
+          return '<button type="button" role="tab" class="tab' + (key === current ? ' active' : '') + '" aria-selected="' + (key === current) + '" data-key="' + key + '">' +
+            label + '<span class="count">' + count + '</span></button>';
+        }).join('');
+
+        const list = current ? mine.filter(i => i.status === current) : mine;
+        document.getElementById('myItems').innerHTML = list.length
+          ? list.map(itemCard).join('')
+          : (mine.length
+              ? emptyState('Nothing here', 'You have no ' + current + ' items.')
+              : emptyState("You haven't reported anything yet", 'Lost or found something? Report it so others can help.', '<a class="btn btn-primary" href="report.html">Report an Item</a>'));
+      }
+
+      document.getElementById('tabs').addEventListener('click', e => {
+        const btn = e.target.closest('.tab');
+        if (!btn) return;
+        current = btn.dataset.key;
+        render();
+      });
+
+      render();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Items - Campus Lost &amp; Found</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="site-nav"></header>
+
+  <main>
+    <section class="page-head">
+      <div class="container">
+        <h1>Search Items</h1>
+        <p>Look through everything reported lost or found on campus.</p>
+      </div>
+    </section>
+
+    <div class="container page-body">
+      <form class="filters" id="filters" role="search">
+        <div class="input-icon field-search">
+          <span id="qIcon"></span>
+          <input class="input" type="search" id="q" placeholder="Search by name, description, location..." aria-label="Search">
+        </div>
+        <select class="input" id="category" aria-label="Category"><option value="">All categories</option></select>
+        <select class="input" id="status" aria-label="Status">
+          <option value="">All statuses</option>
+          <option value="lost">Lost</option>
+          <option value="found">Found</option>
+          <option value="returned">Returned</option>
+        </select>
+        <select class="input" id="location" aria-label="Location"><option value="">All locations</option></select>
+        <button class="btn btn-outline" type="button" id="clearBtn">Clear</button>
+      </form>
+
+      <div class="results-meta"><span id="resultCount"></span></div>
+      <div class="items-grid" id="results"></div>
+    </div>
+  </main>
+
+
+  <script src="items-backend.js"></script>
+  <script src="ui.js"></script>
+  <script>
+    const user = initPage('search');
+    if (user) {
+      document.getElementById('qIcon').outerHTML = icon('search');
+
+      const q = document.getElementById('q');
+      const category = document.getElementById('category');
+      const status = document.getElementById('status');
+      const locationSel = document.getElementById('location');
+
+      CATEGORIES.forEach(c => category.add(new Option(c, c)));
+      Items.getAllLocations().forEach(l => locationSel.add(new Option(l, l)));
+
+      // Pre-fill from the URL (e.g. coming from the home page search bar or a stat card)
+      const params = new URLSearchParams(location.search);
+      q.value = params.get('q') || '';
+      category.value = params.get('category') || '';
+      status.value = params.get('status') || '';
+      locationSel.value = params.get('location') || '';
+
+      function run() {
+        const filters = { query: q.value.trim(), category: category.value, status: status.value, location: locationSel.value };
+        const results = Items.search(filters);
+
+        document.getElementById('resultCount').textContent = results.length + (results.length === 1 ? ' item found' : ' items found');
+        document.getElementById('results').innerHTML = results.length
+          ? results.map(itemCard).join('')
+          : emptyState('No matching items', 'Try different words or clear the filters.', '<a class="btn btn-primary" href="report.html">Report an Item</a>');
+
+        // Keep the URL in sync so results can be bookmarked or shared
+        const p = new URLSearchParams();
+        if (filters.query) p.set('q', filters.query);
+        if (filters.category) p.set('category', filters.category);
+        if (filters.status) p.set('status', filters.status);
+        if (filters.location) p.set('location', filters.location);
+        try { history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p : '')); } catch (e) {}
+      }
+
+      document.getElementById('filters').addEventListener('submit', e => { e.preventDefault(); run(); });
+      q.addEventListener('input', run);
+      [category, status, locationSel].forEach(s => s.addEventListener('change', run));
+      document.getElementById('clearBtn').addEventListener('click', () => {
+        q.value = category.value = status.value = locationSel.value = '';
+        run();
+        q.focus();
+      });
+
+      run();
+    }
+  </script>
+</body>
+</html>
